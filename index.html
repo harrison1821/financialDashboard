@@ -172,7 +172,6 @@
   .day-pnl.neg { color: var(--red); }
   .day-trades { font-size: 11px; color: var(--muted); }
   .wk-label { font-family: var(--mono); font-size: 9px; color: var(--dim); text-transform: uppercase; letter-spacing: .08em; }
-  .no-data { font-size: 11px; color: var(--dim); margin-top: auto; }
 
   /* Divider */
   .section-divider { height: 0.5px; background: var(--border); margin: 36px 0; }
@@ -267,7 +266,6 @@
 </div>
 
 <script>
-// âââ State âââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââ
 let state = {
   accounts: ['XFA'],
   active: 'XFA',
@@ -276,7 +274,6 @@ let state = {
   month: new Date().getMonth() + 1,
 };
 
-// âââ Storage âââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââ
 const Store = {
   save() {
     try {
@@ -299,7 +296,6 @@ const Store = {
   }
 };
 
-// âââ CSV Parser âââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââ
 function parseCSV(text) {
   const lines = text.replace(/^\uFEFF/, '').replace(/\r/g, '').trim().split('\n');
   const headers = lines[0].split(',').map(h => h.trim().replace(/^\uFEFF/, ''));
@@ -311,7 +307,6 @@ function parseCSV(text) {
   });
 }
 
-// âââ Session Date (3pm+ â next day) ââââââââââââââââââââââââââââââââââââââââââ
 function getSessionDate(enteredAt) {
   const m = enteredAt.match(/(\d{2})\/(\d{2})\/(\d{4}) (\d{2})/);
   if (!m) return null;
@@ -321,7 +316,6 @@ function getSessionDate(enteredAt) {
   return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
 }
 
-// âââ Compute Daily Data âââââââââââââââââââââââââââââââââââââââââââââââââââââââ
 function computeDaily(trades) {
   const daily = {};
   for (const r of trades) {
@@ -341,13 +335,11 @@ function computeDaily(trades) {
   return out;
 }
 
-// âââ Merge Trades âââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââ
 function mergeTrades(existing, incoming) {
   const ids = new Set(existing.map(r => r.Id));
   return [...existing, ...incoming.filter(r => !ids.has(r.Id))];
 }
 
-// âââ Calendar Builder âââââââââââââââââââââââââââââââââââââââââââââââââââââââââ
 function buildCalendar(year, month) {
   const pad = n => String(n).padStart(2, '0');
   const startDow = (new Date(year, month - 1, 1).getDay() + 6) % 7;
@@ -366,13 +358,11 @@ function buildCalendar(year, month) {
   return weeks;
 }
 
-// âââ Format âââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââ
 function fmtPnl(n) {
   return (n >= 0 ? '+$' : '-$') + Math.abs(n).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 const MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
 
-// âââ Toast ââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââ
 function showToast(msg) {
   const el = document.getElementById('toast');
   el.textContent = msg;
@@ -380,7 +370,6 @@ function showToast(msg) {
   setTimeout(() => el.classList.remove('show'), 3000);
 }
 
-// âââ Render âââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââ
 function render() {
   const trades = state.tradesMap[state.active] || [];
   const daily  = computeDaily(trades);
@@ -392,12 +381,10 @@ function render() {
   const losses = mDays.filter(([,v]) => v.pnl < 0).length;
   const avg    = mDays.length ? netPnl / mDays.length : 0;
 
-  // Accounts
   document.getElementById('accounts').innerHTML = state.accounts.map(acc => `
     <button class="acc-btn ${acc === state.active ? 'active' : ''}" onclick="switchAccount('${acc}')">${acc}</button>
   `).join('');
 
-  // Stats
   document.getElementById('stats').innerHTML = [
     { label: 'net p/l',   val: fmtPnl(netPnl), cls: netPnl >= 0 ? 'pos' : 'neg' },
     { label: 'win days',  val: wins,            cls: 'neutral' },
@@ -410,52 +397,32 @@ function render() {
     </div>
   `).join('');
 
-  // Month label
   document.getElementById('month-label').textContent = `${MONTHS[month - 1]} ${year}`;
 
-  // Calendar
   const weeks = buildCalendar(year, month);
   let html = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun']
     .map(d => `<div class="cal-header-cell">${d}</div>`).join('');
 
   weeks.forEach((week, wi) => {
     week.forEach((c, ci) => {
-      if (!c || c.type === 'empty') {
-        html += `<div class="cal-cell empty"></div>`; return;
-      }
+      if (!c || c.type === 'empty') { html += `<div class="cal-cell empty"></div>`; return; }
       if (c.type === 'sat') {
         let wp = 0, wt = 0, has = false;
         c.weekDays.forEach(d => { if (daily[d]) { wp += daily[d].pnl; wt += daily[d].trades; has = true; } });
         wp = Math.round(wp * 100) / 100;
-        html += `<div class="cal-cell sat-total">
-          <div class="wk-label">wk ${wi + 1}</div>
-          ${has
-            ? `<div class="day-pnl ${wp >= 0 ? 'pos' : 'neg'}">${fmtPnl(wp)}</div><div class="day-trades">${wt} trades</div>`
-            : `<div class="no-data">â</div>`}
-        </div>`; return;
+        html += `<div class="cal-cell sat-total"><div class="wk-label">wk ${wi+1}</div>${has ? `<div class="day-pnl ${wp >= 0 ? 'pos' : 'neg'}">${fmtPnl(wp)}</div><div class="day-trades">${wt} trades</div>` : ''}</div>`; return;
       }
       const d = daily[c.date];
-      const isSun = ci === 6;
-      html += `<div class="cal-cell ${isSun ? 'sun' : ''}">
-        <div class="day-num">${c.dayNum}</div>
-        ${d
-          ? `<div class="day-pnl ${d.pnl >= 0 ? 'pos' : 'neg'}">${fmtPnl(d.pnl)}</div><div class="day-trades">${d.trades} trades</div>`
-          : `<div class="no-data">â</div>`}
-      </div>`;
+      html += `<div class="cal-cell ${ci === 6 ? 'sun' : ''}"><div class="day-num">${c.dayNum}</div>${d ? `<div class="day-pnl ${d.pnl >= 0 ? 'pos' : 'neg'}">${fmtPnl(d.pnl)}</div><div class="day-trades">${d.trades} trades</div>` : ''}</div>`;
     });
   });
   document.getElementById('calendar').innerHTML = html;
-
-  // Empty state
   document.getElementById('empty-state').style.display = trades.length === 0 ? 'block' : 'none';
-
-  // Footer
   const totalTrades = Object.values(state.tradesMap).flat().length;
   document.getElementById('footer-info').textContent = totalTrades > 0 ? `${totalTrades} trades stored` : '';
   document.getElementById('footer-account').textContent = state.active + ' \u00b7 localStorage';
 }
 
-// âââ Account Modal ââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââ
 function openModal() {
   document.getElementById('modal-input').value = '';
   document.getElementById('modal-overlay').classList.add('show');
@@ -485,7 +452,6 @@ document.getElementById('modal-input').addEventListener('keydown', e => {
   if (e.key === 'Escape') closeModal();
 });
 
-// âââ Actions ââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââ
 function switchAccount(acc) {
   state.active = acc;
   render();
@@ -512,7 +478,6 @@ document.getElementById('file-input').addEventListener('change', async (e) => {
   e.target.value = '';
 });
 
-// âââ Boot âââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââ
 Store.load();
 render();
 </script>
