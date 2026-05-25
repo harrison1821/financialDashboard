@@ -55,7 +55,7 @@
   .logo span { color: var(--accent); }
 
   /* Account tabs */
-  .accounts { display: flex; gap: 4px; }
+  .accounts { display: flex; gap: 4px; align-items: center; }
   .acc-btn {
     font-family: var(--mono); font-size: 12px; padding: 5px 14px;
     border-radius: 20px; cursor: pointer; transition: all .15s;
@@ -67,6 +67,45 @@
     color: var(--text);
   }
   .acc-btn:hover:not(.active) { color: var(--text); }
+  .add-acc-btn {
+    font-family: var(--mono); font-size: 14px; line-height: 1;
+    width: 24px; height: 24px; border-radius: 50%;
+    background: transparent; border: 0.5px solid var(--border2);
+    color: var(--muted); cursor: pointer; display: flex;
+    align-items: center; justify-content: center;
+    transition: border-color .15s, color .15s;
+  }
+  .add-acc-btn:hover { border-color: var(--accent); color: var(--accent); }
+
+  /* Account modal */
+  .modal-overlay {
+    display: none; position: fixed; inset: 0;
+    background: rgba(0,0,0,.6); z-index: 100;
+    align-items: center; justify-content: center;
+  }
+  .modal-overlay.show { display: flex; }
+  .modal {
+    background: var(--bg2); border: 0.5px solid var(--border2);
+    border-radius: var(--radius-lg); padding: 24px;
+    width: 320px; display: flex; flex-direction: column; gap: 14px;
+  }
+  .modal-title { font-family: var(--mono); font-size: 12px; color: var(--muted); letter-spacing: .06em; text-transform: uppercase; }
+  .modal-input {
+    font-family: var(--mono); font-size: 14px; color: var(--text);
+    background: var(--bg3); border: 0.5px solid var(--border2);
+    border-radius: var(--radius); padding: 9px 12px; width: 100%;
+    outline: none; transition: border-color .15s;
+  }
+  .modal-input:focus { border-color: var(--accent); }
+  .modal-actions { display: flex; gap: 8px; justify-content: flex-end; }
+  .modal-btn {
+    font-family: var(--mono); font-size: 12px; padding: 7px 16px;
+    border-radius: var(--radius); cursor: pointer; transition: all .15s;
+    background: transparent; border: 0.5px solid var(--border2); color: var(--muted);
+  }
+  .modal-btn:hover { color: var(--text); border-color: var(--border2); }
+  .modal-btn.primary { border-color: var(--accent); color: var(--accent); }
+  .modal-btn.primary:hover { background: rgba(79,127,255,.1); }
 
   /* Upload btn */
   .upload-btn {
@@ -168,11 +207,24 @@
 <body>
 <div class="shell">
 
+  <!-- New Account Modal -->
+  <div class="modal-overlay" id="modal-overlay" onclick="closeModal(event)">
+    <div class="modal">
+      <div class="modal-title">new account</div>
+      <input class="modal-input" id="modal-input" type="text" placeholder="account name (e.g. Apex, PA2)" maxlength="20">
+      <div class="modal-actions">
+        <button class="modal-btn" onclick="closeModal()">cancel</button>
+        <button class="modal-btn primary" onclick="confirmAddAccount()">add account</button>
+      </div>
+    </div>
+  </div>
+
   <!-- Header -->
   <div class="header">
     <div class="header-left">
       <div class="logo">trade<span>.</span>dash</div>
       <div class="accounts" id="accounts"></div>
+      <button class="add-acc-btn" onclick="openModal()" title="add account">+</button>
     </div>
     <div style="display:flex;align-items:center;gap:12px;">
       <div class="toast" id="toast"></div>
@@ -215,7 +267,7 @@
 </div>
 
 <script>
-// ─── State ───────────────────────────────────────────────────────────────────
+// âââ State âââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââ
 let state = {
   accounts: ['XFA'],
   active: 'XFA',
@@ -224,7 +276,7 @@ let state = {
   month: new Date().getMonth() + 1,
 };
 
-// ─── Storage ─────────────────────────────────────────────────────────────────
+// âââ Storage âââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââ
 const Store = {
   save() {
     try {
@@ -247,7 +299,7 @@ const Store = {
   }
 };
 
-// ─── CSV Parser ───────────────────────────────────────────────────────────────
+// âââ CSV Parser âââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââ
 function parseCSV(text) {
   const lines = text.replace(/^\uFEFF/, '').replace(/\r/g, '').trim().split('\n');
   const headers = lines[0].split(',').map(h => h.trim().replace(/^\uFEFF/, ''));
@@ -259,7 +311,7 @@ function parseCSV(text) {
   });
 }
 
-// ─── Session Date (3pm+ → next day) ──────────────────────────────────────────
+// âââ Session Date (3pm+ â next day) ââââââââââââââââââââââââââââââââââââââââââ
 function getSessionDate(enteredAt) {
   const m = enteredAt.match(/(\d{2})\/(\d{2})\/(\d{4}) (\d{2})/);
   if (!m) return null;
@@ -269,7 +321,7 @@ function getSessionDate(enteredAt) {
   return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
 }
 
-// ─── Compute Daily Data ───────────────────────────────────────────────────────
+// âââ Compute Daily Data âââââââââââââââââââââââââââââââââââââââââââââââââââââââ
 function computeDaily(trades) {
   const daily = {};
   for (const r of trades) {
@@ -289,13 +341,13 @@ function computeDaily(trades) {
   return out;
 }
 
-// ─── Merge Trades ─────────────────────────────────────────────────────────────
+// âââ Merge Trades âââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââ
 function mergeTrades(existing, incoming) {
   const ids = new Set(existing.map(r => r.Id));
   return [...existing, ...incoming.filter(r => !ids.has(r.Id))];
 }
 
-// ─── Calendar Builder ─────────────────────────────────────────────────────────
+// âââ Calendar Builder âââââââââââââââââââââââââââââââââââââââââââââââââââââââââ
 function buildCalendar(year, month) {
   const pad = n => String(n).padStart(2, '0');
   const startDow = (new Date(year, month - 1, 1).getDay() + 6) % 7;
@@ -314,13 +366,13 @@ function buildCalendar(year, month) {
   return weeks;
 }
 
-// ─── Format ───────────────────────────────────────────────────────────────────
+// âââ Format âââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââ
 function fmtPnl(n) {
   return (n >= 0 ? '+$' : '-$') + Math.abs(n).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 const MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
 
-// ─── Toast ────────────────────────────────────────────────────────────────────
+// âââ Toast ââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââ
 function showToast(msg) {
   const el = document.getElementById('toast');
   el.textContent = msg;
@@ -328,7 +380,7 @@ function showToast(msg) {
   setTimeout(() => el.classList.remove('show'), 3000);
 }
 
-// ─── Render ───────────────────────────────────────────────────────────────────
+// âââ Render âââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââ
 function render() {
   const trades = state.tradesMap[state.active] || [];
   const daily  = computeDaily(trades);
@@ -379,7 +431,7 @@ function render() {
           <div class="wk-label">wk ${wi + 1}</div>
           ${has
             ? `<div class="day-pnl ${wp >= 0 ? 'pos' : 'neg'}">${fmtPnl(wp)}</div><div class="day-trades">${wt} trades</div>`
-            : `<div class="no-data">—</div>`}
+            : `<div class="no-data">â</div>`}
         </div>`; return;
       }
       const d = daily[c.date];
@@ -388,7 +440,7 @@ function render() {
         <div class="day-num">${c.dayNum}</div>
         ${d
           ? `<div class="day-pnl ${d.pnl >= 0 ? 'pos' : 'neg'}">${fmtPnl(d.pnl)}</div><div class="day-trades">${d.trades} trades</div>`
-          : `<div class="no-data">—</div>`}
+          : `<div class="no-data">â</div>`}
       </div>`;
     });
   });
@@ -400,10 +452,40 @@ function render() {
   // Footer
   const totalTrades = Object.values(state.tradesMap).flat().length;
   document.getElementById('footer-info').textContent = totalTrades > 0 ? `${totalTrades} trades stored` : '';
-  document.getElementById('footer-account').textContent = `${state.active} · localStorage`;
+  document.getElementById('footer-account').textContent = `${state.active} Â· localStorage`;
 }
 
-// ─── Actions ──────────────────────────────────────────────────────────────────
+// âââ Account Modal ââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââ
+function openModal() {
+  document.getElementById('modal-input').value = '';
+  document.getElementById('modal-overlay').classList.add('show');
+  setTimeout(() => document.getElementById('modal-input').focus(), 50);
+}
+
+function closeModal(e) {
+  if (e && e.target !== document.getElementById('modal-overlay')) return;
+  document.getElementById('modal-overlay').classList.remove('show');
+}
+
+function confirmAddAccount() {
+  const name = document.getElementById('modal-input').value.trim().toUpperCase();
+  if (!name) return;
+  if (state.accounts.includes(name)) { showToast('account already exists'); return; }
+  state.accounts.push(name);
+  state.tradesMap[name] = [];
+  state.active = name;
+  Store.save();
+  render();
+  document.getElementById('modal-overlay').classList.remove('show');
+  showToast(`account ${name} created`);
+}
+
+document.getElementById('modal-input').addEventListener('keydown', e => {
+  if (e.key === 'Enter') confirmAddAccount();
+  if (e.key === 'Escape') closeModal();
+});
+
+// âââ Actions ââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââ
 function switchAccount(acc) {
   state.active = acc;
   render();
@@ -430,7 +512,7 @@ document.getElementById('file-input').addEventListener('change', async (e) => {
   e.target.value = '';
 });
 
-// ─── Boot ─────────────────────────────────────────────────────────────────────
+// âââ Boot âââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââ
 Store.load();
 render();
 </script>
