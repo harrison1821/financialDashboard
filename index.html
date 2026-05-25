@@ -452,7 +452,7 @@ function render() {
   // Footer
   const totalTrades = Object.values(state.tradesMap).flat().length;
   document.getElementById('footer-info').textContent = totalTrades > 0 ? `${totalTrades} trades stored` : '';
-  document.getElementById('footer-account').textContent = `${state.active} Â· localStorage`;
+  document.getElementById('footer-account').textContent = state.active + ' \u00b7 localStorage';
 }
 
 // âââ Account Modal ââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââ
