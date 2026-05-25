@@ -1,0 +1,438 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Trade Dashboard</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:ital,wght@0,300;0,400;0,500;1,400&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg:        #0e0f11;
+    --bg2:       #16181c;
+    --bg3:       #1e2126;
+    --border:    rgba(255,255,255,0.07);
+    --border2:   rgba(255,255,255,0.12);
+    --text:      #e8e9eb;
+    --muted:     #6b6f78;
+    --dim:       #3a3d45;
+    --green:     #34d17a;
+    --green-dim: rgba(52,209,122,0.12);
+    --red:       #f0605a;
+    --red-dim:   rgba(240,96,90,0.12);
+    --accent:    #4f7fff;
+    --mono:      'DM Mono', monospace;
+    --sans:      'DM Sans', sans-serif;
+    --radius:    8px;
+    --radius-lg: 12px;
+  }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--sans);
+    font-size: 14px;
+    min-height: 100vh;
+    padding: 0;
+  }
+
+  /* Layout */
+  .shell { max-width: 1100px; margin: 0 auto; padding: 32px 24px 80px; }
+
+  /* Header */
+  .header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 32px;
+    padding-bottom: 20px;
+    border-bottom: 0.5px solid var(--border);
+  }
+  .header-left { display: flex; align-items: center; gap: 20px; }
+  .logo { font-family: var(--mono); font-size: 13px; color: var(--muted); letter-spacing: .08em; }
+  .logo span { color: var(--accent); }
+
+  /* Account tabs */
+  .accounts { display: flex; gap: 4px; }
+  .acc-btn {
+    font-family: var(--mono); font-size: 12px; padding: 5px 14px;
+    border-radius: 20px; cursor: pointer; transition: all .15s;
+    background: transparent; border: 0.5px solid transparent;
+    color: var(--muted);
+  }
+  .acc-btn.active {
+    background: var(--bg3); border-color: var(--border2);
+    color: var(--text);
+  }
+  .acc-btn:hover:not(.active) { color: var(--text); }
+
+  /* Upload btn */
+  .upload-btn {
+    font-family: var(--mono); font-size: 12px; padding: 7px 16px;
+    border-radius: var(--radius); cursor: pointer;
+    background: transparent; border: 0.5px solid var(--border2);
+    color: var(--text); display: flex; align-items: center; gap: 7px;
+    transition: border-color .15s, background .15s;
+  }
+  .upload-btn:hover { border-color: var(--accent); background: rgba(79,127,255,.06); }
+  .upload-btn svg { width: 13px; height: 13px; stroke: currentColor; fill: none; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+
+  /* Toast */
+  .toast {
+    font-family: var(--mono); font-size: 11px; color: var(--green);
+    padding: 6px 12px; background: var(--green-dim); border-radius: 20px;
+    opacity: 0; transition: opacity .3s; pointer-events: none;
+  }
+  .toast.show { opacity: 1; }
+
+  /* Stats bar */
+  .stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-bottom: 28px; }
+  .stat-card {
+    background: var(--bg2); border: 0.5px solid var(--border);
+    border-radius: var(--radius-lg); padding: 16px 18px;
+  }
+  .stat-label { font-size: 11px; color: var(--muted); letter-spacing: .06em; text-transform: uppercase; margin-bottom: 6px; }
+  .stat-value { font-family: var(--mono); font-size: 20px; font-weight: 500; }
+  .stat-value.pos { color: var(--green); }
+  .stat-value.neg { color: var(--red); }
+  .stat-value.neutral { color: var(--text); }
+
+  /* Month nav */
+  .month-nav { display: flex; align-items: center; gap: 10px; margin-bottom: 14px; }
+  .month-nav-btn {
+    background: transparent; border: none; cursor: pointer;
+    color: var(--muted); padding: 4px 6px; display: flex;
+    transition: color .15s;
+  }
+  .month-nav-btn:hover { color: var(--text); }
+  .month-nav-btn svg { width: 16px; height: 16px; stroke: currentColor; fill: none; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+  .month-label { font-family: var(--mono); font-size: 13px; color: var(--text); min-width: 140px; text-align: center; letter-spacing: .04em; }
+
+  /* Calendar */
+  .cal-grid { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 4px; }
+  .cal-header-cell {
+    font-family: var(--mono); font-size: 10px; color: var(--muted);
+    text-align: center; padding: 6px 0; letter-spacing: .08em; text-transform: uppercase;
+  }
+  .cal-cell {
+    background: var(--bg2); border: 0.5px solid var(--border);
+    border-radius: var(--radius); padding: 9px 8px;
+    min-height: 76px; display: flex; flex-direction: column; gap: 3px;
+    transition: border-color .15s;
+  }
+  .cal-cell:hover { border-color: var(--border2); }
+  .cal-cell.sun { background: var(--bg); }
+  .cal-cell.sat-total { background: var(--bg3); border-color: var(--border2); }
+  .cal-cell.empty { background: transparent; border-color: transparent; pointer-events: none; }
+  .cal-cell.empty:hover { border-color: transparent; }
+  .day-num { font-family: var(--mono); font-size: 10px; color: var(--dim); font-weight: 400; }
+  .day-pnl { font-family: var(--mono); font-size: 13px; font-weight: 500; margin-top: 1px; }
+  .day-pnl.pos { color: var(--green); }
+  .day-pnl.neg { color: var(--red); }
+  .day-trades { font-size: 11px; color: var(--muted); }
+  .wk-label { font-family: var(--mono); font-size: 9px; color: var(--dim); text-transform: uppercase; letter-spacing: .08em; }
+  .no-data { font-size: 11px; color: var(--dim); margin-top: auto; }
+
+  /* Divider */
+  .section-divider { height: 0.5px; background: var(--border); margin: 36px 0; }
+
+  /* Empty state */
+  .empty-state {
+    margin-top: 24px; padding: 40px;
+    background: var(--bg2); border: 0.5px dashed var(--border2);
+    border-radius: var(--radius-lg); text-align: center;
+  }
+  .empty-state p { color: var(--muted); font-family: var(--mono); font-size: 12px; line-height: 1.8; }
+  .empty-state p span { color: var(--accent); }
+
+  /* Footer */
+  .footer {
+    margin-top: 40px; padding-top: 16px;
+    border-top: 0.5px solid var(--border);
+    display: flex; justify-content: space-between; align-items: center;
+  }
+  .footer-info { font-family: var(--mono); font-size: 11px; color: var(--dim); }
+
+  /* Fade-in */
+  @keyframes fadeUp { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+  .fade-in { animation: fadeUp .3s ease both; }
+
+  /* Scrollbar */
+  ::-webkit-scrollbar { width: 6px; }
+  ::-webkit-scrollbar-track { background: var(--bg); }
+  ::-webkit-scrollbar-thumb { background: var(--bg3); border-radius: 3px; }
+</style>
+</head>
+<body>
+<div class="shell">
+
+  <!-- Header -->
+  <div class="header">
+    <div class="header-left">
+      <div class="logo">trade<span>.</span>dash</div>
+      <div class="accounts" id="accounts"></div>
+    </div>
+    <div style="display:flex;align-items:center;gap:12px;">
+      <div class="toast" id="toast"></div>
+      <input type="file" id="file-input" accept=".csv" style="display:none">
+      <button class="upload-btn" onclick="document.getElementById('file-input').click()">
+        <svg viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+        upload trades
+      </button>
+    </div>
+  </div>
+
+  <!-- Stats -->
+  <div class="stats fade-in" id="stats"></div>
+
+  <!-- Month nav -->
+  <div class="month-nav">
+    <button class="month-nav-btn" onclick="navMonth(-1)">
+      <svg viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"/></svg>
+    </button>
+    <div class="month-label" id="month-label"></div>
+    <button class="month-nav-btn" onclick="navMonth(1)">
+      <svg viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"/></svg>
+    </button>
+  </div>
+
+  <!-- Calendar -->
+  <div class="cal-grid fade-in" id="calendar"></div>
+
+  <!-- Empty state -->
+  <div class="empty-state" id="empty-state" style="display:none">
+    <p>no trades loaded<br><span>upload a csv export</span> from your broker to get started<br>data is saved locally in your browser</p>
+  </div>
+
+  <!-- Footer -->
+  <div class="footer">
+    <div class="footer-info" id="footer-info"></div>
+    <div class="footer-info" id="footer-account"></div>
+  </div>
+
+</div>
+
+<script>
+// ─── State ───────────────────────────────────────────────────────────────────
+let state = {
+  accounts: ['XFA'],
+  active: 'XFA',
+  tradesMap: { XFA: [] },
+  year: new Date().getFullYear(),
+  month: new Date().getMonth() + 1,
+};
+
+// ─── Storage ─────────────────────────────────────────────────────────────────
+const Store = {
+  save() {
+    try {
+      localStorage.setItem('td_accounts', JSON.stringify(state.accounts));
+      state.accounts.forEach(acc => {
+        localStorage.setItem(`td_trades_${acc}`, JSON.stringify(state.tradesMap[acc] || []));
+      });
+    } catch(e) { console.error('save error', e); }
+  },
+  load() {
+    try {
+      const accs = JSON.parse(localStorage.getItem('td_accounts') || '["XFA"]');
+      state.accounts = accs;
+      state.active = accs[0];
+      state.tradesMap = {};
+      accs.forEach(acc => {
+        state.tradesMap[acc] = JSON.parse(localStorage.getItem(`td_trades_${acc}`) || '[]');
+      });
+    } catch(e) { console.error('load error', e); }
+  }
+};
+
+// ─── CSV Parser ───────────────────────────────────────────────────────────────
+function parseCSV(text) {
+  const lines = text.replace(/^\uFEFF/, '').replace(/\r/g, '').trim().split('\n');
+  const headers = lines[0].split(',').map(h => h.trim().replace(/^\uFEFF/, ''));
+  return lines.slice(1).filter(l => l.trim()).map(line => {
+    const vals = line.split(',');
+    const obj = {};
+    headers.forEach((h, i) => { obj[h] = (vals[i] || '').trim(); });
+    return obj;
+  });
+}
+
+// ─── Session Date (3pm+ → next day) ──────────────────────────────────────────
+function getSessionDate(enteredAt) {
+  const m = enteredAt.match(/(\d{2})\/(\d{2})\/(\d{4}) (\d{2})/);
+  if (!m) return null;
+  const [, mo, da, yr, hr] = m;
+  const d = new Date(+yr, +mo - 1, +da);
+  if (+hr >= 15) d.setDate(d.getDate() + 1);
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+}
+
+// ─── Compute Daily Data ───────────────────────────────────────────────────────
+function computeDaily(trades) {
+  const daily = {};
+  for (const r of trades) {
+    const sd = getSessionDate(r.EnteredAt);
+    if (!sd) continue;
+    const ent = r.EnteredAt.replace(/ [+-]\d{2}:\d{2}$/, '');
+    const ex  = r.ExitedAt.replace(/ [+-]\d{2}:\d{2}$/, '');
+    const net = parseFloat(r.PnL) - parseFloat(r.Fees) - (parseFloat(r.Commissions) || 0);
+    if (!daily[sd]) daily[sd] = { pnl: 0, keys: new Set() };
+    daily[sd].pnl += net;
+    daily[sd].keys.add(`${ent}|${ex}`);
+  }
+  const out = {};
+  for (const [d, v] of Object.entries(daily)) {
+    out[d] = { pnl: Math.round(v.pnl * 100) / 100, trades: v.keys.size };
+  }
+  return out;
+}
+
+// ─── Merge Trades ─────────────────────────────────────────────────────────────
+function mergeTrades(existing, incoming) {
+  const ids = new Set(existing.map(r => r.Id));
+  return [...existing, ...incoming.filter(r => !ids.has(r.Id))];
+}
+
+// ─── Calendar Builder ─────────────────────────────────────────────────────────
+function buildCalendar(year, month) {
+  const pad = n => String(n).padStart(2, '0');
+  const startDow = (new Date(year, month - 1, 1).getDay() + 6) % 7;
+  const daysInMonth = new Date(year, month, 0).getDate();
+  const makeRow = () => Array(7).fill(null).map((_, i) => i === 5 ? { type: 'sat', weekDays: [] } : { type: 'empty' });
+  const weeks = [];
+  let row = makeRow();
+  for (let d = 1; d <= daysInMonth; d++) {
+    const dow = (startDow + d - 1) % 7;
+    if (dow === 5) continue;
+    if (dow === 0 && d > 1) { weeks.push(row); row = makeRow(); }
+    row[dow] = { type: 'day', date: `${year}-${pad(month)}-${pad(d)}`, dayNum: d };
+  }
+  weeks.push(row);
+  weeks.forEach(w => { w[5].weekDays = [0,1,2,3,4].filter(i => w[i]?.type === 'day').map(i => w[i].date); });
+  return weeks;
+}
+
+// ─── Format ───────────────────────────────────────────────────────────────────
+function fmtPnl(n) {
+  return (n >= 0 ? '+$' : '-$') + Math.abs(n).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+const MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+
+// ─── Toast ────────────────────────────────────────────────────────────────────
+function showToast(msg) {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.classList.add('show');
+  setTimeout(() => el.classList.remove('show'), 3000);
+}
+
+// ─── Render ───────────────────────────────────────────────────────────────────
+function render() {
+  const trades = state.tradesMap[state.active] || [];
+  const daily  = computeDaily(trades);
+  const { year, month } = state;
+  const pfx    = `${year}-${String(month).padStart(2,'0')}`;
+  const mDays  = Object.entries(daily).filter(([d]) => d.startsWith(pfx));
+  const netPnl = mDays.reduce((s, [,v]) => s + v.pnl, 0);
+  const wins   = mDays.filter(([,v]) => v.pnl > 0).length;
+  const losses = mDays.filter(([,v]) => v.pnl < 0).length;
+  const avg    = mDays.length ? netPnl / mDays.length : 0;
+
+  // Accounts
+  document.getElementById('accounts').innerHTML = state.accounts.map(acc => `
+    <button class="acc-btn ${acc === state.active ? 'active' : ''}" onclick="switchAccount('${acc}')">${acc}</button>
+  `).join('');
+
+  // Stats
+  document.getElementById('stats').innerHTML = [
+    { label: 'net p/l',   val: fmtPnl(netPnl), cls: netPnl >= 0 ? 'pos' : 'neg' },
+    { label: 'win days',  val: wins,            cls: 'neutral' },
+    { label: 'loss days', val: losses,          cls: 'neutral' },
+    { label: 'avg / day', val: fmtPnl(avg),     cls: avg >= 0 ? 'pos' : 'neg' },
+  ].map(s => `
+    <div class="stat-card">
+      <div class="stat-label">${s.label}</div>
+      <div class="stat-value ${s.cls}">${s.val}</div>
+    </div>
+  `).join('');
+
+  // Month label
+  document.getElementById('month-label').textContent = `${MONTHS[month - 1]} ${year}`;
+
+  // Calendar
+  const weeks = buildCalendar(year, month);
+  let html = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun']
+    .map(d => `<div class="cal-header-cell">${d}</div>`).join('');
+
+  weeks.forEach((week, wi) => {
+    week.forEach((c, ci) => {
+      if (!c || c.type === 'empty') {
+        html += `<div class="cal-cell empty"></div>`; return;
+      }
+      if (c.type === 'sat') {
+        let wp = 0, wt = 0, has = false;
+        c.weekDays.forEach(d => { if (daily[d]) { wp += daily[d].pnl; wt += daily[d].trades; has = true; } });
+        wp = Math.round(wp * 100) / 100;
+        html += `<div class="cal-cell sat-total">
+          <div class="wk-label">wk ${wi + 1}</div>
+          ${has
+            ? `<div class="day-pnl ${wp >= 0 ? 'pos' : 'neg'}">${fmtPnl(wp)}</div><div class="day-trades">${wt} trades</div>`
+            : `<div class="no-data">—</div>`}
+        </div>`; return;
+      }
+      const d = daily[c.date];
+      const isSun = ci === 6;
+      html += `<div class="cal-cell ${isSun ? 'sun' : ''}">
+        <div class="day-num">${c.dayNum}</div>
+        ${d
+          ? `<div class="day-pnl ${d.pnl >= 0 ? 'pos' : 'neg'}">${fmtPnl(d.pnl)}</div><div class="day-trades">${d.trades} trades</div>`
+          : `<div class="no-data">—</div>`}
+      </div>`;
+    });
+  });
+  document.getElementById('calendar').innerHTML = html;
+
+  // Empty state
+  document.getElementById('empty-state').style.display = trades.length === 0 ? 'block' : 'none';
+
+  // Footer
+  const totalTrades = Object.values(state.tradesMap).flat().length;
+  document.getElementById('footer-info').textContent = totalTrades > 0 ? `${totalTrades} trades stored` : '';
+  document.getElementById('footer-account').textContent = `${state.active} · localStorage`;
+}
+
+// ─── Actions ──────────────────────────────────────────────────────────────────
+function switchAccount(acc) {
+  state.active = acc;
+  render();
+}
+
+function navMonth(dir) {
+  const d = new Date(state.year, state.month - 1 + dir, 1);
+  state.year  = d.getFullYear();
+  state.month = d.getMonth() + 1;
+  render();
+}
+
+document.getElementById('file-input').addEventListener('change', async (e) => {
+  const file = e.target.files[0]; if (!file) return;
+  const text = await file.text();
+  const incoming = parseCSV(text);
+  const existing = state.tradesMap[state.active] || [];
+  const merged   = mergeTrades(existing, incoming);
+  const added    = merged.length - existing.length;
+  state.tradesMap[state.active] = merged;
+  Store.save();
+  render();
+  showToast(`${added} new trade${added !== 1 ? 's' : ''} added`);
+  e.target.value = '';
+});
+
+// ─── Boot ─────────────────────────────────────────────────────────────────────
+Store.load();
+render();
+</script>
+</body>
+</html>
